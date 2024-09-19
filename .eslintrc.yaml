@@ -5,15 +5,18 @@ ignorePatterns:
   - dist
 
 extends:
-  - plugin:@foxglove/base
-  - plugin:@foxglove/jest
+  - plugin:@lichtblick/base
+  - plugin:@lichtblick/jest
 
 overrides:
   - files: ["*.ts", "*.tsx"]
     extends:
-      - plugin:@foxglove/typescript
+      - plugin:@lichtblick/typescript
     parserOptions:
       project: [./tsconfig.json, ./tsconfig.dts.json]
   - files: ["example/**"]
     parserOptions:
       project: ./example/tsconfig.json
+      
+rules:
+  "@lichtblick/no-boolean-parameters": off

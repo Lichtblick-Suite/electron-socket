@@ -44,9 +44,13 @@ describe("UdpSocketElectron", () => {
     const socket1 = new UdpSocketElectron(0, new MessagePort(), createSocket(SOCKET_OPTS));
     const socket2 = createSocket(SOCKET_OPTS);
 
-    await new Promise<void>((resolve) => socket2.bind(PORT2, resolve));
+    await new Promise<void>((resolve) => {
+      socket2.bind(PORT2, resolve);
+    });
     const receive = new Promise<[Buffer, UdpRemoteInfo]>((resolve) =>
-      socket2.on("message", (msg, rinfo) => resolve([msg, rinfo])),
+      socket2.on("message", (msg, rinfo) => {
+        resolve([msg, rinfo]);
+      }),
     );
 
     await socket1.bind({ port: PORT1 });

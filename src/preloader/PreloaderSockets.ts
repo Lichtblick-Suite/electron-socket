@@ -7,14 +7,14 @@ export class PreloaderSockets {
   // connecting to the renderer ("main world"). Function calls such as
   // createSocket() and createServer() come in on this channel, and function
   // call return values are sent back over it
-  private _messagePort: MessagePort;
+  #messagePort: MessagePort;
   // The API exposed to the renderer
-  private _functionHandlers = new Map<string, (callId: number, args: Cloneable[]) => void>([
+  #functionHandlers = new Map<string, (callId: number, args: Cloneable[]) => void>([
     [
       "createHttpServer",
       (callId, _) => {
         const port = createHttpServer();
-        this._messagePort.postMessage([callId], [port]);
+        this.#messagePort.postMessage([callId], [port]);
       },
     ],
     [
@@ -24,9 +24,9 @@ export class PreloaderSockets {
         const port = args[1] as number;
         const msgPort = createSocket(host, port);
         if (msgPort == undefined) {
-          this._messagePort.postMessage([callId, `createSocket(${host}, ${port}) failed`]);
+          this.#messagePort.postMessage([callId, `createSocket(${host}, ${port}) failed`]);
         } else {
-          this._messagePort.postMessage([callId], [msgPort]);
+          this.#messagePort.postMessage([callId], [msgPort]);
         }
       },
     ],
@@ -35,9 +35,9 @@ export class PreloaderSockets {
       (callId, _args) => {
         const msgPort = createServer();
         if (msgPort == undefined) {
-          this._messagePort.postMessage([callId, `createServer() failed`]);
+          this.#messagePort.postMessage([callId, `createServer() failed`]);
         } else {
-          this._messagePort.postMessage([callId], [msgPort]);
+          this.#messagePort.postMessage([callId], [msgPort]);
         }
       },
     ],
@@ -46,9 +46,9 @@ export class PreloaderSockets {
       (callId, _args) => {
         const msgPort = createUdpSocket();
         if (msgPort == undefined) {
-          this._messagePort.postMessage([callId, `createUdpSocket() failed`]);
+          this.#messagePort.postMessage([callId, `createUdpSocket() failed`]);
         } else {
-          this._messagePort.postMessage([callId], [msgPort]);
+          this.#messagePort.postMessage([callId], [msgPort]);
         }
       },
     ],
@@ -60,14 +60,14 @@ export class PreloaderSockets {
   static #registeredSocketPromises = new Map<string, Promise<PreloaderSockets>>();
 
   constructor(messagePort: MessagePort) {
-    this._messagePort = messagePort;
+    this.#messagePort = messagePort;
 
     messagePort.onmessage = (ev: MessageEvent<RpcCall>) => {
       const methodName = ev.data[0];
       const callId = ev.data[1];
-      const handler = this._functionHandlers.get(methodName);
+      const handler = this.#functionHandlers.get(methodName);
       if (handler == undefined) {
-        this._messagePort.postMessage([callId, `unhandled method "${methodName}"`]);
+        this.#messagePort.postMessage([callId, `unhandled method "${methodName}"`]);
         return;
       }
 

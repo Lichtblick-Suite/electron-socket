@@ -11,28 +11,25 @@ export class Sockets {
   // the renderer to the preloader ("isolated world"). Function calls such as
   // createSocket() and createServer() are sent over this port, and function
   // call return values are received back over it
-  private _messagePort: MessagePort;
+  #messagePort: MessagePort;
   // Completion callbacks for any in-flight RPC calls
-  private _callbacks = new Map<
-    number,
-    (args: Cloneable[], ports?: readonly MessagePort[]) => void
-  >();
+  #callbacks = new Map<number, (args: Cloneable[], ports?: readonly MessagePort[]) => void>();
   // Asynchronous RPC calls are tracked using a callId integer
-  private _nextCallId = 0;
+  #nextCallId = 0;
 
   // A map of created `Sockets` instances, or a promise if creation is in progress
   /** @deprecated Use `Create()` rather than accessing `registeredSockets` directly */
   static registeredSockets = new Map<string, Sockets | Promise<Sockets>>();
 
   constructor(messagePort: MessagePort) {
-    this._messagePort = messagePort;
+    this.#messagePort = messagePort;
 
     messagePort.onmessage = (ev: MessageEvent<RpcResponse>) => {
       const callId = ev.data[0];
       const args = ev.data.slice(1);
-      const callback = this._callbacks.get(callId);
+      const callback = this.#callbacks.get(callId);
       if (callback != undefined) {
-        this._callbacks.delete(callId);
+        this.#callbacks.delete(callId);
         callback(args, ev.ports);
       }
     };
@@ -40,72 +37,76 @@ export class Sockets {
 
   async createHttpServer(requestHandler?: HttpHandler): Promise<HttpServerRenderer> {
     return await new Promise((resolve, reject) => {
-      const callId = this._nextCallId++;
-      this._callbacks.set(callId, (_, ports) => {
+      const callId = this.#nextCallId++;
+      this.#callbacks.set(callId, (_, ports) => {
         const port = ports?.[0];
         if (port == undefined) {
-          return reject(new Error("no port returned"));
+          reject(new Error("no port returned"));
+          return;
         }
 
         resolve(new HttpServerRenderer(port, requestHandler));
       });
 
       const msg: RpcCall = ["createHttpServer", callId];
-      this._messagePort.postMessage(msg);
+      this.#messagePort.postMessage(msg);
     });
   }
 
   async createSocket(host: string, port: number): Promise<TcpSocketRenderer> {
     return await new Promise((resolve, reject) => {
-      const callId = this._nextCallId++;
-      this._callbacks.set(callId, (args, ports) => {
+      const callId = this.#nextCallId++;
+      this.#callbacks.set(callId, (args, ports) => {
         const msgPort = ports?.[0];
         if (msgPort == undefined) {
           const err = args[0] as string | undefined;
-          return reject(new Error(err ?? "no port returned"));
+          reject(new Error(err ?? "no port returned"));
+          return;
         }
 
         resolve(new TcpSocketRenderer(msgPort));
       });
 
       const msg: RpcCall = ["createSocket", callId, host, port];
-      this._messagePort.postMessage(msg);
+      this.#messagePort.postMessage(msg);
     });
   }
 
   async createServer(): Promise<TcpServerRenderer> {
     return await new Promise((resolve, reject) => {
-      const callId = this._nextCallId++;
-      this._callbacks.set(callId, (args, ports) => {
+      const callId = this.#nextCallId++;
+      this.#callbacks.set(callId, (args, ports) => {
         const port = ports?.[0];
         if (port == undefined) {
           const err = args[0] as string | undefined;
-          return reject(new Error(err ?? "no port returned"));
+          reject(new Error(err ?? "no port returned"));
+          return;
         }
 
         resolve(new TcpServerRenderer(port));
       });
 
       const msg: RpcCall = ["createServer", callId];
-      this._messagePort.postMessage(msg);
+      this.#messagePort.postMessage(msg);
     });
   }
 
   async createUdpSocket(): Promise<UdpSocketRenderer> {
     return await new Promise((resolve, reject) => {
-      const callId = this._nextCallId++;
-      this._callbacks.set(callId, (args, ports) => {
+      const callId = this.#nextCallId++;
+      this.#callbacks.set(callId, (args, ports) => {
         const msgPort = ports?.[0];
         if (msgPort == undefined) {
           const err = args[0] as string | undefined;
-          return reject(new Error(err ?? "no port returned"));
+          reject(new Error(err ?? "no port returned"));
+          return;
         }
 
         resolve(new UdpSocketRenderer(msgPort));
       });
 
       const msg: RpcCall = ["createUdpSocket", callId];
-      this._messagePort.postMessage(msg);
+      this.#messagePort.postMessage(msg);
     });
   }
 

@@ -11,7 +11,7 @@ export function dnsLookup(
   options: dns.LookupOneOptions,
   callback: (err: NodeJS.ErrnoException | null, address: string, family: number) => void,
 ): void {
-  if (!/\.local$/.test(hostname)) {
+  if (!hostname.endsWith(".local")) {
     getaddrinfo(hostname, options, callback);
   } else {
     void mdnsLookup(hostname, options, callback);
@@ -25,7 +25,8 @@ export async function mdnsLookup(
 ): Promise<void> {
   const response = await mdnsResolver.mdnsLookup(hostname, options);
   if (response == undefined) {
-    return callback(new Error(`mDNS resolution timed out for "${hostname}"`), "", 0);
+    callback(new Error(`mDNS resolution timed out for "${hostname}"`), "", 0);
+    return;
   }
   callback(null, response.address, response.family);
 }

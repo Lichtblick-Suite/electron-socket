@@ -12,12 +12,12 @@ export interface HttpServerRendererEvents {
 export class HttpServerRenderer extends EventEmitter<HttpServerRendererEvents> {
   handler: HttpHandler;
 
-  private _url?: string;
-  private _port?: number;
-  private _messagePort: MessagePort;
-  private _callbacks = new Map<number, (result: Cloneable[]) => void>();
-  private _nextCallId = 0;
-  private _eventMap = new Map<string, (args: Cloneable[], ports?: readonly MessagePort[]) => void>([
+  #url?: string;
+  #port?: number;
+  #messagePort: MessagePort;
+  #callbacks = new Map<number, (result: Cloneable[]) => void>();
+  #nextCallId = 0;
+  #eventMap = new Map<string, (args: Cloneable[], ports?: readonly MessagePort[]) => void>([
     ["close", () => this.emit("close")],
     [
       "request",
@@ -38,7 +38,7 @@ export class HttpServerRenderer extends EventEmitter<HttpServerRendererEvents> {
 
   constructor(messagePort: MessagePort, requestHandler?: HttpHandler) {
     super();
-    this._messagePort = messagePort;
+    this.#messagePort = messagePort;
     this.handler = requestHandler ?? (async () => ({ statusCode: 404 }));
 
     messagePort.onmessage = (ev: MessageEvent<RpcResponse | RpcEvent>) => {
@@ -46,15 +46,15 @@ export class HttpServerRenderer extends EventEmitter<HttpServerRendererEvents> {
       if (typeof ev.data[0] === "number") {
         // RpcResponse
         const callId = ev.data[0];
-        const callback = this._callbacks.get(callId);
+        const callback = this.#callbacks.get(callId);
         if (callback != undefined) {
-          this._callbacks.delete(callId);
+          this.#callbacks.delete(callId);
           callback(args);
         }
       } else {
         // RpcEvent
         const eventName = ev.data[0];
-        const handler = this._eventMap.get(eventName);
+        const handler = this.#eventMap.get(eventName);
         handler?.(args, ev.ports);
       }
     };
@@ -62,11 +62,11 @@ export class HttpServerRenderer extends EventEmitter<HttpServerRendererEvents> {
   }
 
   url(): string | undefined {
-    return this._url;
+    return this.#url;
   }
 
   port(): number | undefined {
-    return this._port;
+    return this.#port;
   }
 
   async address(): Promise<TcpAddress | undefined> {
@@ -84,11 +84,11 @@ export class HttpServerRenderer extends EventEmitter<HttpServerRendererEvents> {
     // Store the URL and port we are listening at
     const addr = await this.address();
     if (addr == undefined || typeof addr === "string") {
-      this._url = addr;
-      this._port = undefined;
+      this.#url = addr;
+      this.#port = undefined;
     } else {
-      this._url = `http://${hostname ?? addr.address}:${addr.port}/`;
-      this._port = addr.port;
+      this.#url = `http://${hostname ?? addr.address}:${addr.port}/`;
+      this.#port = addr.port;
     }
   }
 
@@ -98,20 +98,20 @@ export class HttpServerRenderer extends EventEmitter<HttpServerRendererEvents> {
 
   async dispose(): Promise<void> {
     await this._apiCall("dispose");
-    this._messagePort.onmessage = null;
-    this._messagePort.close();
-    this._callbacks.clear();
+    this.#messagePort.onmessage = null;
+    this.#messagePort.close();
+    this.#callbacks.clear();
   }
 
   async _apiCall(methodName: string, ...args: Cloneable[]): Promise<Cloneable[]> {
     return await new Promise((resolve) => {
-      const callId = this._nextCallId++;
-      this._callbacks.set(callId, (result) => {
-        this._callbacks.delete(callId);
+      const callId = this.#nextCallId++;
+      this.#callbacks.set(callId, (result) => {
+        this.#callbacks.delete(callId);
         resolve(result);
       });
       const msg: RpcCall = [methodName, callId, ...args];
-      this._messagePort.postMessage(msg);
+      this.#messagePort.postMessage(msg);
     });
   }
 }

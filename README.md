@@ -1,8 +1,8 @@
-# @foxglove/electron-socket
+# @lichtblick/electron-socket
 
 Networking sockets for Electron apps
 
-[![npm version](https://img.shields.io/npm/v/@foxglove/electron-socket.svg?style=flat)](https://www.npmjs.com/package/@foxglove/electron-socket)
+[![npm version](https://img.shields.io/npm/v/@lichtblick/electron-socket.svg?style=flat)](https://www.npmjs.com/package/@lichtblick/electron-socket)
 
 ## Introduction
 
@@ -12,14 +12,14 @@ Raw sockets are not supported in browser contexts, even in Electron apps. To ove
 
 ```ts
 // preload.ts ////////////////////////////////////////////////////////////////
-import { PreloaderSockets } from "@foxglove/electron-socket/preloader";
+import { PreloaderSockets } from "@lichtblick/electron-socket/preloader";
 
 PreloaderSockets.Create();
 ```
 
 ```ts
 // renderer.ts ///////////////////////////////////////////////////////////////
-import { Sockets } from "@foxglove/electron-socket/renderer";
+import { Sockets } from "@lichtblick/electron-socket/renderer";
 
 async function main() {
   const net = await Sockets.Create();
@@ -40,7 +40,7 @@ main();
 
 ## License
 
-@foxglove/electron-socket is licensed under the [MIT License](https://opensource.org/licenses/MIT).
+@lichtblick/electron-socket is licensed under the [MIT License](https://opensource.org/licenses/MIT).
 
 ## Development
 
@@ -53,7 +53,3 @@ A small example Electron app is provided in the [example](example) directory, wh
 1. Run `yarn version --[major|minor|patch]` to bump version
 2. Run `git push && git push --tags` to push new tag
 3. GitHub Actions will take care of the rest
-
-## Stay in touch
-
-Join our [Slack channel](https://foxglove.dev/slack) to ask questions, share feedback, and stay up to date on what our team is working on.

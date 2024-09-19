@@ -11,19 +11,34 @@ type MaybeHasFd = {
 
 export class UdpSocketElectron {
   readonly id: number;
-  private _socket: dgram.Socket;
-  private _messagePort: MessagePort;
-  private _api = new Map<string, RpcHandler>([
-    ["remoteAddress", (callId) => this._apiResponse(callId, this.remoteAddress())],
-    ["localAddress", (callId) => this._apiResponse(callId, this.localAddress())],
-    ["fd", (callId) => this._apiResponse(callId, this.fd())],
+  #socket: dgram.Socket;
+  #messagePort: MessagePort;
+  #api = new Map<string, RpcHandler>([
+    [
+      "remoteAddress",
+      (callId) => {
+        this.#apiResponse(callId, this.remoteAddress());
+      },
+    ],
+    [
+      "localAddress",
+      (callId) => {
+        this.#apiResponse(callId, this.localAddress());
+      },
+    ],
+    [
+      "fd",
+      (callId) => {
+        this.#apiResponse(callId, this.fd());
+      },
+    ],
     [
       "addMembership",
       (callId, args) => {
         const multicastAddress = args[0] as string;
         const multicastInterface = args[1] as string | undefined;
         this.addMembership(multicastAddress, multicastInterface);
-        this._apiResponse(callId);
+        this.#apiResponse(callId);
       },
     ],
     [
@@ -33,7 +48,7 @@ export class UdpSocketElectron {
         const groupAddress = args[1] as string;
         const multicastInterface = args[2] as string | undefined;
         this.addSourceSpecificMembership(sourceAddress, groupAddress, multicastInterface);
-        this._apiResponse(callId);
+        this.#apiResponse(callId);
       },
     ],
     [
@@ -46,8 +61,12 @@ export class UdpSocketElectron {
           fd?: number;
         };
         this.bind(options)
-          .then(() => this._apiResponse(callId, undefined))
-          .catch((err: Error) => this._apiResponse(callId, String(err.stack ?? err)));
+          .then(() => {
+            this.#apiResponse(callId, undefined);
+          })
+          .catch((err: Error) => {
+            this.#apiResponse(callId, String(err.stack ?? err));
+          });
       },
     ],
     [
@@ -55,7 +74,7 @@ export class UdpSocketElectron {
       (callId, args) => {
         const enable = args[0] as boolean;
         this.setBroadcast(enable);
-        this._apiResponse(callId);
+        this.#apiResponse(callId);
       },
     ],
     [
@@ -63,7 +82,7 @@ export class UdpSocketElectron {
       (callId, args) => {
         const multicastInterface = args[0] as string;
         this.setMulticastInterface(multicastInterface);
-        this._apiResponse(callId);
+        this.#apiResponse(callId);
       },
     ],
     [
@@ -71,7 +90,7 @@ export class UdpSocketElectron {
       (callId, args) => {
         const enable = args[0] as boolean;
         this.setMulticastLoopback(enable);
-        this._apiResponse(callId);
+        this.#apiResponse(callId);
       },
     ],
     [
@@ -79,7 +98,7 @@ export class UdpSocketElectron {
       (callId, args) => {
         const ttl = args[0] as number;
         this.setMulticastTTL(ttl);
-        this._apiResponse(callId);
+        this.#apiResponse(callId);
       },
     ],
     [
@@ -87,7 +106,7 @@ export class UdpSocketElectron {
       (callId, args) => {
         const size = args[0] as number;
         this.setRecvBufferSize(size);
-        this._apiResponse(callId);
+        this.#apiResponse(callId);
       },
     ],
     [
@@ -95,7 +114,7 @@ export class UdpSocketElectron {
       (callId, args) => {
         const size = args[0] as number;
         this.setSendBufferSize(size);
-        this._apiResponse(callId);
+        this.#apiResponse(callId);
       },
     ],
     [
@@ -103,7 +122,7 @@ export class UdpSocketElectron {
       (callId, args) => {
         const ttl = args[0] as number;
         this.setTTL(ttl);
-        this._apiResponse(callId);
+        this.#apiResponse(callId);
       },
     ],
     [
@@ -112,26 +131,40 @@ export class UdpSocketElectron {
         const port = args[0] as number;
         const address = args[1] as string | undefined;
         this.connect(port, address)
-          .then(() => this._apiResponse(callId, undefined))
-          .catch((err: Error) => this._apiResponse(callId, String(err.stack ?? err)));
+          .then(() => {
+            this.#apiResponse(callId, undefined);
+          })
+          .catch((err: Error) => {
+            this.#apiResponse(callId, String(err.stack ?? err));
+          });
       },
     ],
     [
       "close",
       (callId) => {
         this.close()
-          .then(() => this._apiResponse(callId, undefined))
-          .catch((err: Error) => this._apiResponse(callId, String(err.stack ?? err)));
+          .then(() => {
+            this.#apiResponse(callId, undefined);
+          })
+          .catch((err: Error) => {
+            this.#apiResponse(callId, String(err.stack ?? err));
+          });
       },
     ],
-    ["disconnect", (callId) => this._apiResponse(callId, this.disconnect())],
+    [
+      "disconnect",
+      (callId) => {
+        this.disconnect();
+        this.#apiResponse(callId);
+      },
+    ],
     [
       "dropMembership",
       (callId, args) => {
         const multicastAddress = args[0] as string;
         const multicastInterface = args[1] as string | undefined;
         this.dropMembership(multicastAddress, multicastInterface);
-        this._apiResponse(callId);
+        this.#apiResponse(callId);
       },
     ],
     [
@@ -141,10 +174,16 @@ export class UdpSocketElectron {
         const groupAddress = args[1] as string;
         const multicastInterface = args[2] as string | undefined;
         this.dropSourceSpecificMembership(sourceAddress, groupAddress, multicastInterface);
-        this._apiResponse(callId);
+        this.#apiResponse(callId);
       },
     ],
-    ["dispose", (callId) => this._apiResponse(callId, this.dispose())],
+    [
+      "dispose",
+      (callId) => {
+        this.dispose();
+        this.#apiResponse(callId);
+      },
+    ],
     [
       "send",
       (callId, args) => {
@@ -154,27 +193,39 @@ export class UdpSocketElectron {
         const port = args[3] as number | undefined;
         const address = args[4] as string | undefined;
         this.send(msg, offset, length, port, address)
-          .then(() => this._apiResponse(callId, undefined))
-          .catch((err: Error) => this._apiResponse(callId, String(err.stack ?? err)));
+          .then(() => {
+            this.#apiResponse(callId, undefined);
+          })
+          .catch((err: Error) => {
+            this.#apiResponse(callId, String(err.stack ?? err));
+          });
       },
     ],
   ]);
 
   constructor(id: number, messagePort: MessagePort, socket: dgram.Socket) {
     this.id = id;
-    this._socket = socket;
-    this._messagePort = messagePort;
+    this.#socket = socket;
+    this.#messagePort = messagePort;
 
-    this._socket.on("close", () => this._emit("close"));
-    this._socket.on("connect", () => this._emit("connect"));
-    this._socket.on("message", this._handleMessage);
-    this._socket.on("listening", () => this._emit("listening"));
-    this._socket.on("error", (err) => this._emit("error", String(err.stack ?? err)));
+    this.#socket.on("close", () => {
+      this.#emit("close");
+    });
+    this.#socket.on("connect", () => {
+      this.#emit("connect");
+    });
+    this.#socket.on("message", this.#handleMessage);
+    this.#socket.on("listening", () => {
+      this.#emit("listening");
+    });
+    this.#socket.on("error", (err) => {
+      this.#emit("error", String(err.stack ?? err));
+    });
 
     messagePort.onmessage = (ev: MessageEvent<RpcCall>) => {
       const [methodName, callId] = ev.data;
       const args = ev.data.slice(2);
-      const handler = this._api.get(methodName);
+      const handler = this.#api.get(methodName);
       handler?.(callId, args);
     };
     messagePort.start();
@@ -182,7 +233,7 @@ export class UdpSocketElectron {
 
   remoteAddress(): UdpAddress | undefined {
     try {
-      const { port, family, address } = this._socket.remoteAddress();
+      const { port, family, address } = this.#socket.remoteAddress();
       return { port, family, address };
     } catch {
       return undefined;
@@ -191,7 +242,7 @@ export class UdpSocketElectron {
 
   localAddress(): UdpAddress | undefined {
     try {
-      const { port, family, address } = this._socket.address();
+      const { port, family, address } = this.#socket.address();
       return { port, family, address };
     } catch {
       return undefined;
@@ -204,11 +255,11 @@ export class UdpSocketElectron {
     // where sockets have file descriptors. See
     // <https://github.com/nodejs/help/issues/1312>
     // eslint-disable-next-line no-underscore-dangle
-    return (this._socket as unknown as MaybeHasFd)._handle?.fd;
+    return (this.#socket as unknown as MaybeHasFd)._handle?.fd;
   }
 
   addMembership(multicastAddress: string, multicastInterface?: string): void {
-    this._socket.addMembership(multicastAddress, multicastInterface);
+    this.#socket.addMembership(multicastAddress, multicastInterface);
   }
 
   addSourceSpecificMembership(
@@ -216,46 +267,46 @@ export class UdpSocketElectron {
     groupAddress: string,
     multicastInterface?: string,
   ): void {
-    this._socket.addSourceSpecificMembership(sourceAddress, groupAddress, multicastInterface);
+    this.#socket.addSourceSpecificMembership(sourceAddress, groupAddress, multicastInterface);
   }
 
   async bind(options: dgram.BindOptions): Promise<void> {
-    return await new Promise((resolve, reject) => {
-      this._socket.on("error", reject).bind(options, () => {
-        this._socket.removeListener("error", reject);
+    await new Promise<void>((resolve, reject) => {
+      this.#socket.on("error", reject).bind(options, () => {
+        this.#socket.removeListener("error", reject);
         resolve();
       });
     });
   }
 
   async connect(port: number, address?: string): Promise<void> {
-    return await new Promise((resolve, reject) => {
-      this._socket.on("error", reject).connect(port, address, () => {
-        this._socket.removeListener("error", reject);
+    await new Promise<void>((resolve, reject) => {
+      this.#socket.on("error", reject).connect(port, address, () => {
+        this.#socket.removeListener("error", reject);
         resolve();
-        this._emit("connect");
+        this.#emit("connect");
       });
     });
   }
 
   async close(): Promise<void> {
-    return await new Promise((resolve) => {
-      this._socket.close(() => resolve);
+    await new Promise((resolve) => {
+      this.#socket.close(() => resolve);
     });
   }
 
   disconnect(): void {
-    this._socket.disconnect();
+    this.#socket.disconnect();
   }
 
   dispose(): void {
-    this._socket.removeAllListeners();
+    this.#socket.removeAllListeners();
     void this.close();
-    this._messagePort.close();
+    this.#messagePort.close();
   }
 
   dropMembership(multicastAddress: string, multicastInterface?: string): void {
-    this._socket.dropMembership(multicastAddress, multicastInterface);
+    this.#socket.dropMembership(multicastAddress, multicastInterface);
   }
 
   dropSourceSpecificMembership(
@@ -263,7 +314,7 @@ export class UdpSocketElectron {
     groupAddress: string,
     multicastInterface?: string,
   ): void {
-    this._socket.dropSourceSpecificMembership(sourceAddress, groupAddress, multicastInterface);
+    this.#socket.dropSourceSpecificMembership(sourceAddress, groupAddress, multicastInterface);
   }
 
   async send(
@@ -273,8 +324,8 @@ export class UdpSocketElectron {
     port?: number,
     address?: string,
   ): Promise<void> {
-    return await new Promise((resolve, reject) => {
-      this._socket.send(msg, offset, length, port, address, (err) => {
+    await new Promise<void>((resolve, reject) => {
+      this.#socket.send(msg, offset, length, port, address, (err) => {
         if (err != undefined) {
           reject(err);
           return;
@@ -284,49 +335,49 @@ export class UdpSocketElectron {
     });
   }
 
-  // eslint-disable-next-line @foxglove/no-boolean-parameters
+  // eslint-disable-next-line @lichtblick/no-boolean-parameters
   setBroadcast(flag: boolean): void {
-    this._socket.setBroadcast(flag);
+    this.#socket.setBroadcast(flag);
   }
 
   setMulticastInterface(multicastInterface: string): void {
-    this._socket.setMulticastInterface(multicastInterface);
+    this.#socket.setMulticastInterface(multicastInterface);
   }
 
-  // eslint-disable-next-line @foxglove/no-boolean-parameters
+  // eslint-disable-next-line @lichtblick/no-boolean-parameters
   setMulticastLoopback(flag: boolean): void {
-    this._socket.setMulticastLoopback(flag);
+    this.#socket.setMulticastLoopback(flag);
   }
 
   setMulticastTTL(ttl: number): void {
-    this._socket.setMulticastTTL(ttl);
+    this.#socket.setMulticastTTL(ttl);
   }
 
   setRecvBufferSize(size: number): void {
-    this._socket.setRecvBufferSize(size);
+    this.#socket.setRecvBufferSize(size);
   }
 
   setSendBufferSize(size: number): void {
-    this._socket.setSendBufferSize(size);
+    this.#socket.setSendBufferSize(size);
   }
 
   setTTL(ttl: number): void {
-    this._socket.setTTL(ttl);
+    this.#socket.setTTL(ttl);
   }
 
-  private _apiResponse(callId: number, ...args: Cloneable[]): void {
+  #apiResponse(callId: number, ...args: Cloneable[]): void {
     const msg: RpcResponse = [callId, ...args];
-    this._messagePort.postMessage(msg);
+    this.#messagePort.postMessage(msg);
   }
 
-  private _emit(eventName: string, ...args: Cloneable[]): void {
+  #emit(eventName: string, ...args: Cloneable[]): void {
     const msg: Cloneable[] = [eventName, ...args];
-    this._messagePort.postMessage(msg);
+    this.#messagePort.postMessage(msg);
   }
 
-  private _handleMessage = (data: Uint8Array, rinfo: dgram.RemoteInfo): void => {
+  #handleMessage = (data: Uint8Array, rinfo: dgram.RemoteInfo): void => {
     const cloneableRinfo = { ...rinfo } as Cloneable;
     const msg: Cloneable[] = ["message", data, cloneableRinfo];
-    this._messagePort.postMessage(msg, [data.buffer]);
+    this.#messagePort.postMessage(msg, [data.buffer]);
   };
 }

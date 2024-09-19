@@ -7,7 +7,7 @@
     "rootDir": "..",
     "outDir": "dist",
     "paths": {
-      "@foxglove/electron-socket/*": ["../src/*"]
+      "@lichtblick/electron-socket/*": ["../src/*"]
     }
   }
 }

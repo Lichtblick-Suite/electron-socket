@@ -6,12 +6,17 @@ import { TcpAddress } from "../shared/TcpTypes.js";
 
 export class HttpServerElectron {
   readonly id: number;
-  private _server: http.Server;
-  private _messagePort: MessagePort;
-  private _nextRequestId = 0;
-  private _requests = new Map<number, (response: HttpResponse) => Promise<void>>();
-  private _api = new Map<string, RpcHandler>([
-    ["address", (callId) => this._apiResponse([callId, this.address()])],
+  #server: http.Server;
+  #messagePort: MessagePort;
+  #nextRequestId = 0;
+  #requests = new Map<number, (response: HttpResponse) => Promise<void>>();
+  #api = new Map<string, RpcHandler>([
+    [
+      "address",
+      (callId) => {
+        this.#apiResponse([callId, this.address()]);
+      },
+    ],
     [
       "listen",
       (callId, args) => {
@@ -19,8 +24,12 @@ export class HttpServerElectron {
         const hostname = args[1] as string | undefined;
         const backlog = args[2] as number | undefined;
         this.listen(port, hostname, backlog)
-          .then(() => this._apiResponse([callId, undefined]))
-          .catch((err: Error) => this._apiResponse([callId, String(err.stack ?? err)]));
+          .then(() => {
+            this.#apiResponse([callId, undefined]);
+          })
+          .catch((err: Error) => {
+            this.#apiResponse([callId, String(err.stack ?? err)]);
+          });
       },
     ],
     [
@@ -28,40 +37,60 @@ export class HttpServerElectron {
       (callId, args) => {
         const requestId = args[0] as number;
         const response = args[1] as HttpResponse;
-        const handler = this._requests.get(requestId);
+        const handler = this.#requests.get(requestId);
         if (handler == undefined) {
-          this._apiResponse([callId, `unknown requestId ${requestId}`]);
+          this.#apiResponse([callId, `unknown requestId ${requestId}`]);
           return;
         }
-        this._requests.delete(requestId);
+        this.#requests.delete(requestId);
         handler(response)
-          .then(() => this._apiResponse([callId, undefined]))
-          .catch((err: Error) => this._apiResponse([callId, String(err.stack ?? err)]));
+          .then(() => {
+            this.#apiResponse([callId, undefined]);
+          })
+          .catch((err: Error) => {
+            this.#apiResponse([callId, String(err.stack ?? err)]);
+          });
       },
     ],
-    ["close", (callId) => this._apiResponse([callId, this.close()])],
-    ["dispose", (callId) => this._apiResponse([callId, this.dispose()])],
+    [
+      "close",
+      (callId) => {
+        this.close();
+        this.#apiResponse([callId, undefined]);
+      },
+    ],
+    [
+      "dispose",
+      (callId) => {
+        this.dispose();
+        this.#apiResponse([callId, undefined]);
+      },
+    ],
   ]);
 
   constructor(id: number, messagePort: MessagePort) {
     this.id = id;
-    this._server = http.createServer(this._handleRequest);
-    this._messagePort = messagePort;
+    this.#server = http.createServer(this.#handleRequest);
+    this.#messagePort = messagePort;
 
-    this._server.on("close", () => this._emit("close"));
-    this._server.on("error", (err) => this._emit("error", String(err.stack ?? err)));
+    this.#server.on("close", () => {
+      this.#emit("close");
+    });
+    this.#server.on("error", (err) => {
+      this.#emit("error", String(err.stack ?? err));
+    });
 
     messagePort.onmessage = (ev: MessageEvent<RpcCall>) => {
       const [methodName, callId] = ev.data;
       const args = ev.data.slice(2);
-      const handler = this._api.get(methodName);
+      const handler = this.#api.get(methodName);
       handler?.(callId, args);
     };
     messagePort.start();
   }
 
   address(): TcpAddress | undefined {
-    const addr = this._server.address();
+    const addr = this.#server.address();
     if (addr == undefined || typeof addr === "string") {
       // Address will only be a string for an IPC (named pipe) server, which
       // should never happen here
@@ -71,45 +100,45 @@ export class HttpServerElectron {
   }
 
   async listen(port?: number, hostname?: string, backlog?: number): Promise<void> {
-    return await new Promise((resolve, reject) => {
-      this._server.listen(port, hostname, backlog, () => {
-        this._server.removeListener("error", reject);
+    await new Promise<void>((resolve, reject) => {
+      this.#server.listen(port, hostname, backlog, () => {
+        this.#server.removeListener("error", reject);
         resolve();
       });
     });
   }
 
   close(): void {
-    this._server.close();
+    this.#server.close();
   }
 
   dispose(): void {
-    this._server.removeAllListeners();
+    this.#server.removeAllListeners();
     this.close();
-    this._messagePort.close();
+    this.#messagePort.close();
   }
 
-  private _apiResponse(message: RpcResponse, transfer?: Transferable[]): void {
+  #apiResponse(message: RpcResponse, transfer?: Transferable[]): void {
     if (transfer != undefined) {
-      this._messagePort.postMessage(message, transfer);
+      this.#messagePort.postMessage(message, transfer);
     } else {
-      this._messagePort.postMessage(message);
+      this.#messagePort.postMessage(message);
     }
   }
 
-  private _emit(eventName: string, ...args: Cloneable[]): void {
+  #emit(eventName: string, ...args: Cloneable[]): void {
     const msg = [eventName, ...args];
-    this._messagePort.postMessage(msg);
+    this.#messagePort.postMessage(msg);
   }
 
-  private _handleRequest = (req: http.IncomingMessage, res: http.ServerResponse): void => {
+  #handleRequest = (req: http.IncomingMessage, res: http.ServerResponse): void => {
     const chunks: Uint8Array[] = [];
     req.on("data", (chunk: Uint8Array) => chunks.push(chunk));
     req.on("end", () => {
       const body = Buffer.concat(chunks).toString();
 
-      const requestId = this._nextRequestId++;
-      this._requests.set(requestId, async (out): Promise<void> => {
+      const requestId = this.#nextRequestId++;
+      this.#requests.set(requestId, async (out): Promise<void> => {
         res.shouldKeepAlive = out.shouldKeepAlive ?? res.shouldKeepAlive;
         res.statusCode = out.statusCode;
         res.statusMessage = out.statusMessage ?? "";
@@ -147,7 +176,7 @@ export class HttpServerElectron {
           remotePort: req.socket.remotePort,
         },
       };
-      this._emit("request", requestId, request);
+      this.#emit("request", requestId, request);
     });
   };
 }

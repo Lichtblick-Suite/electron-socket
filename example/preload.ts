@@ -1,4 +1,4 @@
-import { PreloaderSockets } from "@foxglove/electron-socket/preloader";
+import { PreloaderSockets } from "@lichtblick/electron-socket/preloader";
 
 async function main() {
   // Change this delay to test initializing the preloader after the renderer
