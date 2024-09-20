@@ -181,7 +181,7 @@ export class UdpSocketElectron {
       "dispose",
       (callId) => {
         this.dispose();
-        this.#apiResponse(callId);
+        this.#apiResponse(callId, this.dispose());
       },
     ],
     [
@@ -299,10 +299,11 @@ export class UdpSocketElectron {
     this.#socket.disconnect();
   }
 
-  dispose(): void {
+  dispose(): string {
     this.#socket.removeAllListeners();
     void this.close();
     this.#messagePort.close();
+    return "Connection disposed";
   }
 
   dropMembership(multicastAddress: string, multicastInterface?: string): void {
