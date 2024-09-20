@@ -20,6 +20,7 @@ export async function mdns4Request(
     const interfaces = allInterfaces();
     if (interfaces.length === 0) {
       reject(new Error("No interfaces to send an mDNS request"));
+      return;
     }
 
     const finish = (response?: MDnsResponse) => {
