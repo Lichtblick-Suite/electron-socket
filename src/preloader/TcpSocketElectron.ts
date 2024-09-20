@@ -81,14 +81,12 @@ export class TcpSocketElectron {
     [
       "close",
       (callId) => {
-        this.close();
         this.#apiResponse(callId, this.close());
       },
     ],
     [
       "dispose",
       (callId) => {
-        this.dispose();
         this.#apiResponse(callId, this.dispose());
       },
     ],
