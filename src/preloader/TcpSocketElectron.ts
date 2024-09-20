@@ -82,14 +82,14 @@ export class TcpSocketElectron {
       "close",
       (callId) => {
         this.close();
-        this.#apiResponse(callId);
+        this.#apiResponse(callId, this.close());
       },
     ],
     [
       "dispose",
       (callId) => {
         this.dispose();
-        this.#apiResponse(callId);
+        this.#apiResponse(callId, this.dispose());
       },
     ],
     [
@@ -201,14 +201,16 @@ export class TcpSocketElectron {
     });
   }
 
-  close(): void {
+  close(): string {
     this.#socket.destroy();
+    return "Connection closed";
   }
 
-  dispose(): void {
+  dispose(): string {
     this.#socket.removeAllListeners();
     this.close();
     this.#messagePort.close();
+    return "Connection disposed";
   }
 
   // Potentially performance-sensitive; await can be expensive
