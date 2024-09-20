@@ -34,15 +34,15 @@ export class TcpServerElectron {
     [
       "close",
       (callId) => {
-        this.close();
-        this.#apiResponse([callId, undefined]);
+        //eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
+        this.#apiResponse([callId, this.close()]);
       },
     ],
     [
       "dispose",
       (callId) => {
-        this.dispose();
-        this.#apiResponse([callId, undefined]);
+        //eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
+        this.#apiResponse([callId, this.dispose()]);
       },
     ],
   ]);
