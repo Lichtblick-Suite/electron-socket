@@ -154,8 +154,8 @@ export class UdpSocketElectron {
     [
       "disconnect",
       (callId) => {
-        this.disconnect();
-        this.#apiResponse(callId);
+        // eslint-disable-next-line @typescript-eslint/no-confusing-void-expression
+        this.#apiResponse(callId, this.disconnect());
       },
     ],
     [
@@ -180,7 +180,6 @@ export class UdpSocketElectron {
     [
       "dispose",
       (callId) => {
-        this.dispose();
         this.#apiResponse(callId, this.dispose());
       },
     ],
