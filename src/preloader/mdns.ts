@@ -19,7 +19,8 @@ export async function mdns4Request(
   return await new Promise((resolve, reject) => {
     const interfaces = allInterfaces();
     if (interfaces.length === 0) {
-      return reject(new Error("No interfaces to send an mDNS request"));
+      reject(new Error("No interfaces to send an mDNS request"));
+      return;
     }
 
     const finish = (response?: MDnsResponse) => {
@@ -67,7 +68,8 @@ function mdns4RequestOnIface(
         for (const answer of res.answers) {
           if (answer.name === hostname && answer.type === "A") {
             closeSocket(socket);
-            return callback({ answer, rinfo });
+            callback({ answer, rinfo });
+            return;
           }
         }
       }

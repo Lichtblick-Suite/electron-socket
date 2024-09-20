@@ -12,10 +12,10 @@ export interface UdpSocketRendererEvents {
 }
 
 export class UdpSocketRenderer extends EventEmitter<UdpSocketRendererEvents> {
-  private _messagePort: MessagePort;
-  private _callbacks = new Map<number, (result: Cloneable[]) => void>();
-  private _nextCallId = 0;
-  private _eventMap = new Map<string, (args: Cloneable[], ports?: readonly MessagePort[]) => void>([
+  #messagePort: MessagePort;
+  #callbacks = new Map<number, (result: Cloneable[]) => void>();
+  #nextCallId = 0;
+  #eventMap = new Map<string, (args: Cloneable[], ports?: readonly MessagePort[]) => void>([
     ["connect", () => this.emit("connect")],
     ["close", () => this.emit("close")],
     ["listening", () => this.emit("listening")],
@@ -25,22 +25,22 @@ export class UdpSocketRenderer extends EventEmitter<UdpSocketRendererEvents> {
 
   constructor(messagePort: MessagePort) {
     super();
-    this._messagePort = messagePort;
+    this.#messagePort = messagePort;
 
     messagePort.onmessage = (ev: MessageEvent<RpcResponse | RpcEvent>) => {
       const args = ev.data.slice(1);
       if (typeof ev.data[0] === "number") {
         // RpcResponse
         const callId = ev.data[0];
-        const callback = this._callbacks.get(callId);
+        const callback = this.#callbacks.get(callId);
         if (callback != undefined) {
-          this._callbacks.delete(callId);
+          this.#callbacks.delete(callId);
           callback(args);
         }
       } else {
         // RpcEvent
         const eventName = ev.data[0];
-        const handler = this._eventMap.get(eventName);
+        const handler = this.#eventMap.get(eventName);
         handler?.(args, ev.ports);
       }
     };
@@ -48,22 +48,22 @@ export class UdpSocketRenderer extends EventEmitter<UdpSocketRendererEvents> {
   }
 
   async remoteAddress(): Promise<UdpAddress | undefined> {
-    const res = await this._apiCall("remoteAddress");
+    const res = await this.#apiCall("remoteAddress");
     return res[0] as UdpAddress | undefined;
   }
 
   async localAddress(): Promise<UdpAddress | undefined> {
-    const res = await this._apiCall("localAddress");
+    const res = await this.#apiCall("localAddress");
     return res[0] as UdpAddress | undefined;
   }
 
   async fd(): Promise<number | undefined> {
-    const res = await this._apiCall("fd");
+    const res = await this.#apiCall("fd");
     return res[0] as number | undefined;
   }
 
   async addMembership(multicastAddress: string, multicastInterface?: string): Promise<void> {
-    await this._apiCall("addMembership", multicastAddress, multicastInterface);
+    await this.#apiCall("addMembership", multicastAddress, multicastInterface);
   }
 
   async addSourceSpecificMembership(
@@ -71,7 +71,7 @@ export class UdpSocketRenderer extends EventEmitter<UdpSocketRendererEvents> {
     groupAddress: string,
     multicastInterface?: string,
   ): Promise<void> {
-    await this._apiCall(
+    await this.#apiCall(
       "addSourceSpecificMembership",
       sourceAddress,
       groupAddress,
@@ -80,36 +80,36 @@ export class UdpSocketRenderer extends EventEmitter<UdpSocketRendererEvents> {
   }
 
   async bind(options: UdpBindOptions): Promise<void> {
-    const res = await this._apiCall("bind", options);
+    const res = await this.#apiCall("bind", options);
     if (res[0] != undefined) {
       throw new Error(res[0] as string);
     }
   }
 
   async connect(port: number, address?: string): Promise<void> {
-    const res = await this._apiCall("connect", port, address);
+    const res = await this.#apiCall("connect", port, address);
     if (res[0] != undefined) {
       throw new Error(res[0] as string);
     }
   }
 
   async close(): Promise<void> {
-    await this._apiCall("close");
+    await this.#apiCall("close");
   }
 
   async disconnect(): Promise<void> {
-    await this._apiCall("disconnect");
+    await this.#apiCall("disconnect");
   }
 
   async dispose(): Promise<void> {
-    await this._apiCall("dispose");
-    this._messagePort.onmessage = null;
-    this._messagePort.close();
-    this._callbacks.clear();
+    await this.#apiCall("dispose");
+    this.#messagePort.onmessage = null;
+    this.#messagePort.close();
+    this.#callbacks.clear();
   }
 
   async dropMembership(multicastAddress: string, multicastInterface?: string): Promise<void> {
-    await this._apiCall("dropMembership", multicastAddress, multicastInterface);
+    await this.#apiCall("dropMembership", multicastAddress, multicastInterface);
   }
 
   async dropSourceSpecificMembership(
@@ -117,7 +117,7 @@ export class UdpSocketRenderer extends EventEmitter<UdpSocketRendererEvents> {
     groupAddress: string,
     multicastInterface?: string,
   ): Promise<void> {
-    await this._apiCall(
+    await this.#apiCall(
       "dropSourceSpecificMembership",
       sourceAddress,
       groupAddress,
@@ -131,62 +131,62 @@ export class UdpSocketRenderer extends EventEmitter<UdpSocketRendererEvents> {
     length?: number,
     port?: number,
     address?: string,
-    transfer = false, // eslint-disable-line @foxglove/no-boolean-parameters
+    transfer = false, // eslint-disable-line @lichtblick/no-boolean-parameters
   ): Promise<void> {
-    return await new Promise((resolve) => {
-      const callId = this._nextCallId++;
-      this._callbacks.set(callId, () => {
-        this._callbacks.delete(callId);
+    await new Promise<void>((resolve) => {
+      const callId = this.#nextCallId++;
+      this.#callbacks.set(callId, () => {
+        this.#callbacks.delete(callId);
         resolve();
       });
       const msg: RpcCall = ["send", callId, data, offset, length, port, address];
       if (transfer) {
-        this._messagePort.postMessage(msg, [data.buffer]);
+        this.#messagePort.postMessage(msg, [data.buffer]);
       } else {
-        this._messagePort.postMessage(msg);
+        this.#messagePort.postMessage(msg);
       }
     });
   }
 
-  // eslint-disable-next-line @foxglove/no-boolean-parameters
+  // eslint-disable-next-line @lichtblick/no-boolean-parameters
   async setBroadcast(flag: boolean): Promise<void> {
-    await this._apiCall("setBroadcast", flag);
+    await this.#apiCall("setBroadcast", flag);
   }
 
   async setMulticastInterface(multicastInterface: string): Promise<void> {
-    await this._apiCall("setMulticastInterface", multicastInterface);
+    await this.#apiCall("setMulticastInterface", multicastInterface);
   }
 
-  // eslint-disable-next-line @foxglove/no-boolean-parameters
+  // eslint-disable-next-line @lichtblick/no-boolean-parameters
   async setMulticastLoopback(flag: boolean): Promise<void> {
-    await this._apiCall("setMulticastLoopback", flag);
+    await this.#apiCall("setMulticastLoopback", flag);
   }
 
   async setMulticastTTL(ttl: number): Promise<void> {
-    await this._apiCall("setMulticastTTL", ttl);
+    await this.#apiCall("setMulticastTTL", ttl);
   }
 
   async setRecvBufferSize(size: number): Promise<void> {
-    await this._apiCall("setRecvBufferSize", size);
+    await this.#apiCall("setRecvBufferSize", size);
   }
 
   async setSendBufferSize(size: number): Promise<void> {
-    await this._apiCall("setSendBufferSize", size);
+    await this.#apiCall("setSendBufferSize", size);
   }
 
   async setTTL(ttl: number): Promise<void> {
-    await this._apiCall("setTTL", ttl);
+    await this.#apiCall("setTTL", ttl);
   }
 
-  private async _apiCall(methodName: string, ...args: Cloneable[]): Promise<Cloneable[]> {
+  async #apiCall(methodName: string, ...args: Cloneable[]): Promise<Cloneable[]> {
     return await new Promise((resolve) => {
-      const callId = this._nextCallId++;
-      this._callbacks.set(callId, (result) => {
-        this._callbacks.delete(callId);
+      const callId = this.#nextCallId++;
+      this.#callbacks.set(callId, (result) => {
+        this.#callbacks.delete(callId);
         resolve(result);
       });
       const msg: RpcCall = [methodName, callId, ...args];
-      this._messagePort.postMessage(msg);
+      this.#messagePort.postMessage(msg);
     });
   }
 }

@@ -12,7 +12,7 @@ const resolve: ResolveOptions = {
     ".js": [".ts", ".js"],
   },
   alias: {
-    "@foxglove/electron-socket": path.resolve(__dirname, "../src"),
+    "@lichtblick/electron-socket": path.resolve(__dirname, "../src"),
   },
 };
 
