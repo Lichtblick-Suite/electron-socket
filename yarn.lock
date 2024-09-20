@@ -373,11 +373,6 @@
   resolved "https://registry.yarnpkg.com/@eslint/js/-/js-8.36.0.tgz#9837f768c03a1e4a30bd304a64fb8844f0e72efe"
   integrity sha512-lxJ9R5ygVm8ZWgYdUweoq5ownDlJ4upvoWmO4eLxBYHdMo+vZ/Rx0EN6MbKWDJOSUGrqJy2Gt+Dyv/VKml0fjg==
 
-"@foxglove/tsconfig@^1.1.0":
-  version "1.1.0"
-  resolved "https://registry.yarnpkg.com/@foxglove/tsconfig/-/tsconfig-1.1.0.tgz#48c37fffd6f349c3ee08a60fc62ccf636f3b59a6"
-  integrity sha512-qZU4MtXVgPhDBFazSEx7yDEuEg8cPHXFQVhBaUABZkCBdcnEE9sxlgEt0gSikF4fRtY6COGIJPVRflnPJXjJKA==
-
 "@humanwhocodes/config-array@^0.11.8":
   version "0.11.8"
   resolved "https://registry.yarnpkg.com/@humanwhocodes/config-array/-/config-array-0.11.8.tgz#03595ac2075a4dc0f191cc2131de14fbd7d410b9"
@@ -643,6 +638,11 @@
     "@typescript-eslint/utils" "^6"
     tsutils "^3"
     typescript "^4 || ^5"
+
+"@lichtblick/tsconfig@1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@lichtblick/tsconfig/-/tsconfig-1.0.0.tgz#aef04158dd3207673504f0a87b024a17c0c88031"
+  integrity sha512-rqMk2aDJd869bcUlYfkW5otDyGMS2HHCaN3Njz3SleBCY+biTdQbuIF6+bELh2ImvJ/R9jJlPJFMVq/pqSSoLg==
 
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
